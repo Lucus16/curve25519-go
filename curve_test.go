@@ -57,6 +57,14 @@ func TestSignature(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
+	for i, _ := range signature {
+		signature[i] ^= 1
+		good, err := VerifySignature(keys.PublicKey, message, signature)
+		if err == nil && good {
+			t.Errorf("Expected bad signature")
+		}
+		signature[i] ^= 1
+	}
 	good, err := VerifySignature(keys.PublicKey, message, signature)
 	if err != nil {
 		t.Error(err)
