@@ -1,3 +1,5 @@
+.PHONY: all test clean
+
 all: libsignal-protocol-c/build/src/libsignal-protocol-c.a
 	go build
 
