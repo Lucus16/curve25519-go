@@ -1,7 +1,7 @@
 // Package curve is a thin wrapper around the libsignal curve25519
 // implementation. It aims to be the Go equivalent of
 // https://github.com/signalapp/curve25519-java
-package curve25519
+package curve
 
 import "crypto/rand"
 import "fmt"
@@ -14,7 +14,6 @@ import "fmt"
 // #include "ed25519/additions/generalized/gen_x.h"
 import "C"
 
-const djbType = 0x5
 const djbKeyLen = 0x20
 const curveSignatureLen = 0x40
 const vrfSignatureLen = 0x60
@@ -22,13 +21,8 @@ const vrfVerifyLen = 0x20
 
 type u8p = *C.uchar
 
-type ECPublicKey []byte
-type ECPrivateKey []byte
-
-type ECKeyPair struct {
-	PrivateKey ECPrivateKey
-	PublicKey  ECPublicKey
-}
+type PrivateKey []byte
+type PublicKey []byte
 
 type CError struct {
 	Fn   string
@@ -47,36 +41,7 @@ func newCError(fn string, code C.int) error {
 	}
 }
 
-func DecodePoint(data []byte) (key ECPublicKey, err error) {
-	if len(data) < 1 {
-		return nil, fmt.Errorf("No key type identifier")
-	}
-
-	keyType, data := data[0], data[1:]
-	switch keyType {
-	case djbType:
-		if len(data) < djbKeyLen {
-			return nil, fmt.Errorf("Bad key length: %v", len(data))
-		}
-
-		key = make([]byte, djbKeyLen)
-		copy(key, data)
-		return
-	default:
-		return nil, fmt.Errorf("Bad key type: %v", keyType)
-	}
-}
-
-func DecodePrivatePoint(data []byte) (key ECPrivateKey, err error) {
-	if len(data) < djbKeyLen {
-		return nil, fmt.Errorf("Bad key length: %v", len(data))
-	}
-	key = make([]byte, djbKeyLen)
-	copy(key, data)
-	return
-}
-
-func generatePrivateKey() (key ECPrivateKey, err error) {
+func generatePrivateKey() (key PrivateKey, err error) {
 	key = make([]byte, djbKeyLen)
 	_, err = rand.Read(key)
 	if err != nil {
@@ -88,7 +53,7 @@ func generatePrivateKey() (key ECPrivateKey, err error) {
 	return
 }
 
-func generatePublicKey(privateKey ECPrivateKey) (publicKey ECPublicKey, err error) {
+func generatePublicKey(privateKey PrivateKey) (publicKey PublicKey, err error) {
 	if len(privateKey) != djbKeyLen {
 		return nil, fmt.Errorf("Bad key length: %v", len(privateKey))
 	}
@@ -99,19 +64,19 @@ func generatePublicKey(privateKey ECPrivateKey) (publicKey ECPublicKey, err erro
 	return publicKey, newCError("curve25519_donna", result)
 }
 
-func GenerateKeyPair() (keyPair ECKeyPair, err error) {
-	privKey, err := generatePrivateKey()
+func GenerateKeyPair() (privKey PrivateKey, pubKey PublicKey, err error) {
+	privKey, err = generatePrivateKey()
 	if err != nil {
 		return
 	}
-	pubKey, err := generatePublicKey(privKey)
+	pubKey, err = generatePublicKey(privKey)
 	if err != nil {
 		return
 	}
-	return ECKeyPair{privKey, pubKey}, nil
+	return
 }
 
-func CalculateAgreement(publicKey ECPublicKey, privateKey ECPrivateKey) (sharedKey []byte, err error) {
+func (privateKey PrivateKey) CalculateAgreement(publicKey PublicKey) (sharedKey []byte, err error) {
 	if len(publicKey) != djbKeyLen {
 		return nil, fmt.Errorf("Bad key length: %v", len(publicKey))
 	}
@@ -124,7 +89,7 @@ func CalculateAgreement(publicKey ECPublicKey, privateKey ECPrivateKey) (sharedK
 	return sharedKey, newCError("curve25519_donna", result)
 }
 
-func CalculateSignature(key ECPrivateKey, message []byte) (signature []byte, err error) {
+func (key PrivateKey) CalculateSignature(message []byte) (signature []byte, err error) {
 	if len(key) != djbKeyLen {
 		return nil, fmt.Errorf("Bad key length: %v", len(key))
 	}
@@ -139,7 +104,7 @@ func CalculateSignature(key ECPrivateKey, message []byte) (signature []byte, err
 	return signature, newCError("curve25519_sign", result)
 }
 
-func VerifySignature(key ECPublicKey, message []byte, signature []byte) (good bool, err error) {
+func (key PublicKey) VerifySignature(message []byte, signature []byte) (good bool, err error) {
 	if len(key) != djbKeyLen {
 		return false, fmt.Errorf("Bad key length: %v", len(key))
 	}
@@ -151,7 +116,7 @@ func VerifySignature(key ECPublicKey, message []byte, signature []byte) (good bo
 	return result == 0, newCError("curve25519_verify", result)
 }
 
-func CalculateVrfSignature(key ECPrivateKey, message []byte) (signature []byte, err error) {
+func (key PrivateKey) CalculateVrfSignature(message []byte) (signature []byte, err error) {
 	if len(key) != djbKeyLen {
 		return nil, fmt.Errorf("Bad key length: %v", len(key))
 	}
@@ -167,7 +132,7 @@ func CalculateVrfSignature(key ECPrivateKey, message []byte) (signature []byte, 
 	return signature, newCError("generalized_xveddsa_25519_sign", result)
 }
 
-func VerifyVrfSignature(key ECPublicKey, message []byte, signature []byte) (vrfOutput []byte, err error) {
+func (key PublicKey) VerifyVrfSignature(message []byte, signature []byte) (vrfOutput []byte, err error) {
 	if len(key) != djbKeyLen {
 		return nil, fmt.Errorf("Bad key length: %v", len(key))
 	}

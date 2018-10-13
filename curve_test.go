@@ -1,44 +1,45 @@
-package curve25519
+package curve
 
 import "testing"
 import "bytes"
 import "fmt"
 
-func ExampleECKeyPair() {
-	keyPair, _ := GenerateKeyPair()
-	fmt.Println(keyPair)
+func ExampleKeyPair() {
+	priv, pub, _ := GenerateKeyPair()
+	fmt.Println(priv)
+	fmt.Println(pub)
 }
 
 func TestGenerateKeyPair(t *testing.T) {
-	keyPair, err := GenerateKeyPair()
+	priv, pub, err := GenerateKeyPair()
 	if err != nil {
 		t.Error(err)
 	}
-	if len(keyPair.PrivateKey) != djbKeyLen {
+	if len(priv) != djbKeyLen {
 		t.Fail()
 	}
-	if len(keyPair.PublicKey) != djbKeyLen {
+	if len(pub) != djbKeyLen {
 		t.Fail()
 	}
 }
 
 func TestCalculateAgreement(t *testing.T) {
-	alice, err := GenerateKeyPair()
+	alicePriv, alicePub, err := GenerateKeyPair()
 	if err != nil {
 		t.Error(err)
 	}
-	bob, err := GenerateKeyPair()
+	bobPriv, bobPub, err := GenerateKeyPair()
 	if err != nil {
 		t.Error(err)
 	}
-	keyA, err := CalculateAgreement(bob.PublicKey, alice.PrivateKey)
+	keyA, err := alicePriv.CalculateAgreement(bobPub)
 	if err != nil {
 		t.Error(err)
 	}
 	if len(keyA) != djbKeyLen {
 		t.Fail()
 	}
-	keyB, err := CalculateAgreement(alice.PublicKey, bob.PrivateKey)
+	keyB, err := bobPriv.CalculateAgreement(alicePub)
 	if err != nil {
 		t.Error(err)
 	}
@@ -48,24 +49,24 @@ func TestCalculateAgreement(t *testing.T) {
 }
 
 func TestSignature(t *testing.T) {
-	keys, err := GenerateKeyPair()
+	priv, pub, err := GenerateKeyPair()
 	if err != nil {
 		t.Error(err)
 	}
 	message := []byte("Hello world!")
-	signature, err := CalculateSignature(keys.PrivateKey, message)
+	signature, err := priv.CalculateSignature(message)
 	if err != nil {
 		t.Error(err)
 	}
 	for i, _ := range signature {
 		signature[i] ^= 1
-		good, err := VerifySignature(keys.PublicKey, message, signature)
+		good, err := pub.VerifySignature(message, signature)
 		if err == nil && good {
 			t.Errorf("Expected bad signature")
 		}
 		signature[i] ^= 1
 	}
-	good, err := VerifySignature(keys.PublicKey, message, signature)
+	good, err := pub.VerifySignature(message, signature)
 	if err != nil {
 		t.Error(err)
 	}
@@ -75,16 +76,16 @@ func TestSignature(t *testing.T) {
 }
 
 func TestVrfSignature(t *testing.T) {
-	keys, err := GenerateKeyPair()
+	priv, pub, err := GenerateKeyPair()
 	if err != nil {
 		t.Error(err)
 	}
 	message := []byte("Hello world!")
-	signature, err := CalculateVrfSignature(keys.PrivateKey, message)
+	signature, err := priv.CalculateVrfSignature(message)
 	if err != nil {
 		t.Error(err)
 	}
-	vrfOutput, err := VerifyVrfSignature(keys.PublicKey, message, signature)
+	vrfOutput, err := pub.VerifyVrfSignature(message, signature)
 	if err != nil {
 		t.Error(err)
 	}
