@@ -6,12 +6,11 @@ package curve // import "github.com/Lucus16/curve25519-go"
 import "crypto/rand"
 import "fmt"
 
-// #cgo CFLAGS: -g -Ilibsignal-protocol-c/src/curve25519
-// #cgo LDFLAGS: -Llibsignal-protocol-c/build/src -lsignal-protocol-c
+// #cgo CFLAGS: -g -Wall -Wextra -Wno-sign-compare -Wno-unused-parameter -O3
 // #include <stdint.h>
 // #include "curve25519-donna.h"
-// #include "ed25519/additions/curve_sigs.h"
-// #include "ed25519/additions/generalized/gen_x.h"
+// #include "curve_sigs.h"
+// #include "gen_x.h"
 import "C"
 
 const djbKeyLen = 0x20

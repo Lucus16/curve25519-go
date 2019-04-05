@@ -4,5 +4,6 @@ with pkgs;
 
 buildGoPackage {
   name = "curve25519-go";
-  goPackagePath = /var/empty;
+  src = ./.;
+  goPackagePath = "github.com/Lucus16/curve25519-go";
 }
